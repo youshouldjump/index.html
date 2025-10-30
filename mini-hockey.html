@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Mini Hockey vs AI</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0b3d91;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+      color: white;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 40px;
+      font-size: 42px;
+      letter-spacing: 2px;
+      text-shadow: 2px 2px 8px #000;
+    }
+
+    #menu, #gameContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #menu {
+      background: radial-gradient(circle at center, #0077be, #0b3d91);
+    }
+
+    .btn {
+      background: white;
+      color: #0b3d91;
+      font-size: 22px;
+      font-weight: bold;
+      padding: 15px 40px;
+      margin: 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn:hover {
+      background: #ffcc00;
+      color: #003366;
+      transform: scale(1.05);
+    }
+
+    #score {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #0077be;
+      border: 4px solid white;
+      box-shadow: 0 0 20px #000;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <h1>🏒 Mini Hockey 🏒</h1>
+    <p>Select Difficulty:</p>
+    <button class="btn" onclick="startGame('easy')">Easy</button>
+    <button class="btn" onclick="startGame('normal')">Normal</button>
+    <button class="btn" onclick="startGame('hard')">Hard</button>
+  </div>
+
+  <div id="gameContainer" style="display:none;">
+    <h1>🏒 Mini Hockey vs AI 🏒</h1>
+    <div id="score">0 : 0</div>
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+    const menu = document.getElementById('menu');
+    const gameContainer = document.getElementById('gameContainer');
+
+    let puck, paddle1, paddle2, score, keys, aiSpeed, aiErrorMargin, aiDelay, aiTargetY;
+
+    function startGame(difficulty) {
+      // Hide menu, show game
+      menu.style.display = 'none';
+      gameContainer.style.display = 'block';
+
+      // Set difficulty settings
+      if (difficulty === 'easy') {
+        aiSpeed = 3;
+        aiErrorMargin = 80;
+        aiDelay = 6;
+      } else if (difficulty === 'normal') {
+        aiSpeed = 4;
+        aiErrorMargin = 40;
+        aiDelay = 4;
+      } else {
+        aiSpeed = 5;
+        aiErrorMargin = 15;
+        aiDelay = 2;
+      }
+
+      initGame();
+    }
+
+    function initGame() {
+      puck = { x: 400, y: 250, radius: 10, dx: 5, dy: 4 };
+      paddle1 = { x: 20, y: 200, width: 10, height: 100 };
+      paddle2 = { x: 770, y: 200, width: 10, height: 100 };
+      score = { p1: 0, p2: 0 };
+      keys = {};
+      aiTargetY = 250;
+
+      document.addEventListener('keydown', e => keys[e.key] = true);
+      document.addEventListener('keyup', e => keys[e.key] = false);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function drawRect(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
+    }
+
+    function drawCircle(x, y, r, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function movePaddles() {
+      // Player 1 (left)
+      if (keys['w'] && paddle1.y > 0) paddle1.y -= 6;
+      if (keys['s'] && paddle1.y < canvas.height - paddle1.height) paddle1.y += 6;
+
+      // AI
+      if (Math.random() < 0.02 * aiDelay) {
+        aiTargetY = puck.y - paddle2.height / 2 + (Math.random() * aiErrorMargin - aiErrorMargin / 2);
+      }
+
+      if (paddle2.y + paddle2.height / 2 < aiTargetY - 10) paddle2.y += aiSpeed;
+      else if (paddle2.y + paddle2.height / 2 > aiTargetY + 10) paddle2.y -= aiSpeed;
+
+      paddle2.y = Math.max(0, Math.min(canvas.height - paddle2.height, paddle2.y));
+    }
+
+    function resetPuck(scoringPlayer) {
+      if (scoringPlayer === 1) score.p1++;
+      else score.p2++;
+      scoreDisplay.textContent = `${score.p1} : ${score.p2}`;
+
+      puck.x = 400;
+      puck.y = 250;
+      puck.dx = 5 * (Math.random() > 0.5 ? 1 : -1);
+      puck.dy = 4 * (Math.random() > 0.5 ? 1 : -1);
+    }
+
+    function movePuck() {
+      puck.x += puck.dx;
+      puck.y += puck.dy;
+
+      if (puck.y + puck.radius > canvas.height || puck.y - puck.radius < 0)
+        puck.dy *= -1;
+
+      // Player collision
+      if (puck.x - puck.radius < paddle1.x + paddle1.width &&
+          puck.y > paddle1.y && puck.y < paddle1.y + paddle1.height) {
+        puck.dx *= -1.05;
+        puck.x = paddle1.x + paddle1.width + puck.radius;
+      }
+
+      // AI collision
+      if (puck.x + puck.radius > paddle2.x &&
+          puck.y > paddle2.y && puck.y < paddle2.y + paddle2.height) {
+        puck.dx *= -1.05;
+        puck.x = paddle2.x - puck.radius;
+      }
+
+      // Goals
+      if (puck.x < 0) resetPuck(2);
+      if (puck.x > canvas.width) resetPuck(1);
+    }
+
+    function drawCenterLine() {
+      ctx.beginPath();
+      ctx.setLineDash([10, 15]);
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function draw() {
+      drawRect(0, 0, canvas.width, canvas.height, '#0077be');
+      drawCenterLine();
+      drawRect(paddle1.x, paddle1.y, paddle1.width, paddle1.height, 'white');
+      drawRect(paddle2.x, paddle2.y, paddle2.width, paddle2.height, 'white');
+      drawCircle(puck.x, puck.y, puck.radius, 'white');
+    }
+
+    function gameLoop() {
+      movePaddles();
+      movePuck();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+  </script>
+</body>
+</html>
+
+
