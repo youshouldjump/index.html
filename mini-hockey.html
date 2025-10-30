@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Hockey Game 🏒</title>
+<style>
+  body {
+    background: #003366;
+    color: white;
+    font-family: sans-serif;
+    text-align: center;
+    margin: 0;
+  }
+  canvas {
+    background: #0077cc;
+    display: block;
+    margin: 20px auto;
+    border: 5px solid white;
+    border-radius: 10px;
+  }
+  h1 {
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+  <h1>🏒 Mini Hockey Game</h1>
+  <canvas id="gameCanvas" width="800" height="500"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Paddle & puck properties
+    const paddleWidth = 15, paddleHeight = 100;
+    const puckSize = 15;
+
+    const player = { x: 20, y: canvas.height / 2 - paddleHeight / 2, score: 0 };
+    const ai = { x: canvas.width - 35, y: canvas.height / 2 - paddleHeight / 2, score: 0 };
+    const puck = { x: canvas.width / 2, y: canvas.height / 2, vx: 5, vy: 3 };
+
+    // Handle player movement
+    let upPressed = false, downPressed = false;
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp") upPressed = true;
+      if (e.key === "ArrowDown") downPressed = true;
+    });
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "ArrowUp") upPressed = false;
+      if (e.key === "ArrowDown") downPressed = false;
+    });
+
+    function movePlayer() {
+      if (upPressed && player.y > 0) player.y -= 6;
+      if (downPressed && player.y < canvas.height - paddleHeight) player.y += 6;
+    }
+
+    function moveAI() {
+      const center = ai.y + paddleHeight / 2;
+      if (center < puck.y - 20) ai.y += 4;
+      else if (center > puck.y + 20) ai.y -= 4;
+    }
+
+    function movePuck() {
+      puck.x += puck.vx;
+      puck.y += puck.vy;
+
+      // Top & bottom bounce
+      if (puck.y <= 0 || puck.y >= canvas.height - puckSize) puck.vy *= -1;
+
+      // Player collision
+      if (puck.x <= player.x + paddleWidth && puck.y + puckSize > player.y && puck.y < player.y + paddleHeight) {
+        puck.vx *= -1;
+        puck.x = player.x + paddleWidth;
+      }
+
+      // AI collision
+      if (puck.x + puckSize >= ai.x && puck.y + puckSize > ai.y && puck.y < ai.y + paddleHeight) {
+        puck.vx *= -1;
+        puck.x = ai.x - puckSize;
+      }
+
+      // Scoring
+      if (puck.x < 0) {
+        ai.score++;
+        resetPuck();
+      }
+      if (puck.x > canvas.width) {
+        player.score++;
+        resetPuck();
+      }
+    }
+
+    function resetPuck() {
+      puck.x = canvas.width / 2;
+      puck.y = canvas.height / 2;
+      puck.vx = 5 * (Math.random() > 0.5 ? 1 : -1);
+      puck.vy = 3 * (Math.random() > 0.5 ? 1 : -1);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw center line
+      ctx.fillStyle = "white";
+      ctx.fillRect(canvas.width / 2 - 2, 0, 4, canvas.height);
+
+      // Draw paddles and puck
+      ctx.fillRect(player.x, player.y, paddleWidth, paddleHeight);
+      ctx.fillRect(ai.x, ai.y, paddleWidth, paddleHeight);
+
+      ctx.beginPath();
+      ctx.arc(puck.x, puck.y, puckSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw score
+      ctx.font = "24px Arial";
+      ctx.fillText(player.score, canvas.width / 2 - 50, 30);
+      ctx.fillText(ai.score, canvas.width / 2 + 30, 30);
+    }
+
+    function gameLoop() {
+      movePlayer();
+      moveAI();
+      movePuck();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
